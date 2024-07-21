@@ -42,7 +42,7 @@ class QueueSpinLock {
   // CS-Release (Acquire) used to introduce Happens-Before between Critical Sections
   // everything else (B-Release/Acquire, etc.) is due to non-atomicity of std::atomic constructor
   void Acquire(Guard* waiter) {
-    Guard* prev_tail = tail_.exchange(waiter, std::memory_order_acq_rel); // both CS-Acquire-2 and A-Release
+    Guard* prev_tail = tail_.exchange(waiter, std::memory_order_acq_rel); // CS-Acquire-2
     if (prev_tail == nullptr) {
       return;
     }
@@ -60,7 +60,7 @@ class QueueSpinLock {
   }
 
   void Release(Guard* owner) {
-    Guard* next = owner->next_.load(std::memory_order_acquire); // A-Acquire
+    Guard* next = owner->next_.load(std::memory_order_acquire); // B-Acquire
     if (next != nullptr) {
       next->is_owner_.store(true, std::memory_order_release); // CS-Release-1
       return;
