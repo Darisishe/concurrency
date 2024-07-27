@@ -2,40 +2,40 @@
 
 #include <cstdlib>
 
-#include <twist/ed/stdlike/mutex.hpp>
-#include <twist/ed/stdlike/condition_variable.hpp>
+#include <twist/ed/stdlike/atomic.hpp>
+#include <twist/ed/wait/futex.hpp>
 
 namespace exe::support {
 class WaitGroup {
  public:
-  // += count
-  void Add(size_t count) {
-    std::lock_guard guard(mutex_);
-    counter_ += count;
+  void Add(uint32_t count) {
+    counter_.fetch_add(count);
   }
 
-  // =- 1
   void Done() {
-    std::lock_guard guard(mutex_);
-    --counter_;
-    if (counter_ == 0) {
-      is_zero_.notify_all();
+    auto wake_key = twist::ed::futex::PrepareWake(counter_);
+
+    if (counter_.fetch_sub(1) == 1 && parked_.load() > 0) {
+      twist::ed::futex::WakeAll(wake_key);
     }
   }
 
-  // == 0
-  // One-shot
   void Wait() {
-    std::unique_lock lock(mutex_);
-    while (counter_ != 0) {
-      is_zero_.wait(lock);
+    while (true) {
+      uint32_t curr_counter = counter_.load();
+      if (curr_counter == 0) {
+        break;
+      }
+      
+      parked_.fetch_add(1);
+      twist::ed::futex::Wait(counter_, curr_counter);
+      parked_.fetch_sub(1);
     }
   }
 
  private:
-  size_t counter_ = 0;  // protected by mutex_
-  twist::ed::stdlike::mutex mutex_;
-  twist::ed::stdlike::condition_variable is_zero_;
+  twist::ed::stdlike::atomic<uint32_t> counter_{0};
+  twist::ed::stdlike::atomic<size_t> parked_{0};
 };
 
 }  // namespace exe::support
