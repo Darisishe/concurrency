@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace stdlike {
+namespace exe::threads {
 
 class Mutex {
   enum State : uint32_t {
@@ -53,4 +53,4 @@ class Mutex {
   twist::ed::stdlike::atomic<uint32_t> state_{State::Free};
 };
 
-}  // namespace stdlike
+}  // namespace exe::threads

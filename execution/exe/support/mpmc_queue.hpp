@@ -3,8 +3,8 @@
 #include <wheels/intrusive/forward_list.hpp>
 #include <optional>
 
-#include <twist/ed/stdlike/mutex.hpp>
-#include <twist/ed/stdlike/condition_variable.hpp>
+#include <exe/threads/spinlock.hpp>
+#include <exe/threads/condvar.hpp>
 
 namespace exe::support {
 
@@ -16,21 +16,21 @@ class UnboundedBlockingQueue {
   using List = wheels::IntrusiveForwardList<T>;
 
   bool Put(T* value) {
-    std::lock_guard guard(mutex_);
+    std::lock_guard guard(lock_);
     if (closed_) {
       return false;
     }
 
     buffer_.PushBack(value);
-    closed_or_not_empty_.notify_one();
+    closed_or_not_empty_.NotifyOne();
     return true;
   }
 
   std::optional<T*> Take() {
-    std::unique_lock lock(mutex_);
+    std::unique_lock lock(lock_);
 
     while (!closed_ && buffer_.IsEmpty()) {
-      closed_or_not_empty_.wait(lock);
+      closed_or_not_empty_.Wait(lock);
     }
 
     if (closed_ && buffer_.IsEmpty()) {
@@ -41,17 +41,17 @@ class UnboundedBlockingQueue {
   }
 
   void Close() {
-    std::lock_guard guard(mutex_);
+    std::lock_guard guard(lock_);
     closed_ = true;
-    closed_or_not_empty_.notify_all();
+    closed_or_not_empty_.NotifyAll();
   }
 
  private:
   // Buffer
-  List buffer_;  // protected by mutex_
+  List buffer_;  // protected by lock_
   bool closed_ = false;
-  twist::ed::stdlike::mutex mutex_;
-  twist::ed::stdlike::condition_variable closed_or_not_empty_;
+  threads::SpinLock lock_;
+  threads::CondVar closed_or_not_empty_;
 };
 
 }  // namespace exe::support
