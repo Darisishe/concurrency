@@ -34,7 +34,7 @@ class WaitGroup {
 
  private:
   twist::ed::stdlike::atomic<uint32_t> counter_{0};
-  twist::ed::stdlike::atomic<size_t> parked_{0};
+  twist::ed::stdlike::atomic<uint32_t> parked_{0};
 };
 
 }  // namespace exe::support
