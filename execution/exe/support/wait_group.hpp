@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdlib>
-
 #include <twist/ed/stdlike/atomic.hpp>
 #include <twist/ed/wait/futex.hpp>
 
