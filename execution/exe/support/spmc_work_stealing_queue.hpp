@@ -23,8 +23,8 @@ class WorkStealingQueue {
       return false;
     }
 
-    buffer_[curr_tail % Capacity].task.store(task, std::memory_order_release);
-    tail_.fetch_add(1, std::memory_order_relaxed);
+    buffer_[curr_tail % Capacity].task.store(task, std::memory_order_relaxed);
+    tail_.fetch_add(1, std::memory_order_release);
     return true;
   }
 
@@ -43,14 +43,14 @@ class WorkStealingQueue {
     size_t available_tasks = 0;
 
     while (true) {
-      size_t curr_tail = tail_.load(std::memory_order_relaxed);
+      size_t curr_tail = tail_.load(std::memory_order_acquire);
       if (curr_tail <= curr_head) {
         return 0;
       }
       available_tasks = std::min(curr_tail - curr_head, out_buffer.size());
 
       for (size_t i = 0; i < available_tasks; ++i) {
-        out_buffer[i] = buffer_[(curr_head + i) % Capacity].task.load(std::memory_order_acquire);
+        out_buffer[i] = buffer_[(curr_head + i) % Capacity].task.load(std::memory_order_relaxed);
       }
 
       if (head_.compare_exchange_weak(curr_head, curr_head + available_tasks, std::memory_order_relaxed)) {
