@@ -1,10 +1,6 @@
 #pragma once
 
-#include <exe/executors/executor.hpp>
-
-#include <exe/support/mpsc_lock_free_queue.hpp>
-
-#include <memory>
+#include <exe/executors/strand/queue_handler.hpp>
 
 namespace exe::executors {
 
@@ -25,31 +21,10 @@ class Strand : public IExecutor {
   // IExecutor
   void Submit(TaskBase* cs) override;
 
- private:
-  class StrandState : public std::enable_shared_from_this<StrandState> {
-    friend class Strand;
-
-   public:
-    using List = wheels::IntrusiveForwardList<TaskBase>;
-
-    explicit StrandState(IExecutor& underlying);
-
-    static void ExecuteBatch(List batch);
-
-    // creates batch of tasks and submits them
-    // (only if queue is not in process already)
-    void ProcessQueue();
-
-   private:
-    IExecutor& underlying_;
-    support::MPSCUnboundedLockFreeQueue<TaskBase> tasks_;
-
-    // count of 'concurrent' calls to ProcessQueue()
-    twist::ed::stdlike::atomic<uint64_t> contenders_count_{0};
-  };
+  ~Strand();
 
  private:
-  std::shared_ptr<StrandState> state_;
+  strand::QueueHandler* handler_;
 };
 
 }  // namespace exe::executors
