@@ -7,8 +7,6 @@ namespace exe::executors::strand {
 class StrandStateMachine {
  public:
   enum Flag {
-    None = 0,
-
     Discarded = 1,  // ~Strand() was called
     Empty = 2,      // there's no pending tasks in queue
     Idle = 4,       // there's no batch running somewhere
