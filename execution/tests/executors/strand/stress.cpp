@@ -2,12 +2,14 @@
 #include <exe/executors/strand.hpp>
 #include <exe/executors/submit.hpp>
 
+#include <exe/fibers/sched/go.hpp>
+#include <exe/fibers/sched/yield.hpp>
+
 #include <twist/test/with/wheels/stress.hpp>
 
 #include <twist/test/repeat.hpp>
 
 #include <list>
-
 using namespace exe;
 using namespace std::chrono_literals;
 
@@ -80,7 +82,7 @@ void MissingTasks() {
   executors::ThreadPool pool{4};
   pool.Start();
 
-  for (twist::test::Repeat repeat; repeat.Test(); ) {
+  for (twist::test::Repeat repeat; repeat.Test();) {
     executors::Strand strand{pool};
 
     size_t todo = 2 + repeat.Iter() % 5;
@@ -114,6 +116,47 @@ TEST_SUITE(Strand) {
 
   TWIST_TEST(MissingTasks, 5s) {
     MissingTasks();
+  }
+
+  TWIST_TEST(ScalabilityTest, 5s) {
+    static const size_t kWorkers = 4;
+    static const size_t kClients = 5;
+
+    std::atomic<size_t> atomic_counter{0};
+    size_t plain_counter = 0;
+
+    executors::ThreadPool workers{kWorkers};
+    workers.Start();
+
+    executors::Strand strand{workers};
+
+    executors::ThreadPool clients{kClients};
+
+    clients.Start();
+    for (size_t i = 0; i < 1024; ++i) {
+      executors::Submit(clients, [&] {
+        fibers::Go(strand, [&] {
+          for (; twist::test::KeepRunning();) {
+            ++plain_counter;
+            atomic_counter.fetch_add(1, std::memory_order_relaxed);
+            fibers::Yield();
+          }
+        });
+      });
+    }
+
+    clients.WaitIdle();
+    workers.WaitIdle();
+
+    std::cout << "Worker Threads: " << kWorkers << std::endl
+              << "Client Threads: " << kClients << std::endl
+              << "Increments: " << atomic_counter.load() << std::endl
+              << "Plain counter value: " << plain_counter << std::endl;
+
+    ASSERT_EQ(plain_counter, atomic_counter.load());
+
+    clients.Stop();
+    workers.Stop();
   }
 }
 

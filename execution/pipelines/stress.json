@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "targets": [
+        "tp_stress_tests"
+      ],
+      "profiles": [
+        "Release"
+      ]
+    },
+    {
+      "targets": [
+        "fibers_sched_stress_tests"
+      ],
+      "profiles": [
+        "Release"
+      ]
+    },
+    {
+      "targets": [
+        "strand_stress_tests"
+      ],
+      "profiles": [
+        "Release"
+      ]
+    }
+  ]
+}
